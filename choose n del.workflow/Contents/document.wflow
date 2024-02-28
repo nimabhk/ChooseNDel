@@ -1,0 +1,441 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>AMApplicationBuild</key>
+	<string>492</string>
+	<key>AMApplicationVersion</key>
+	<string>2.10</string>
+	<key>AMDocumentVersion</key>
+	<string>2</string>
+	<key>actions</key>
+	<array>
+		<dict>
+			<key>action</key>
+			<dict>
+				<key>AMAccepts</key>
+				<dict>
+					<key>Container</key>
+					<string>List</string>
+					<key>Optional</key>
+					<true/>
+					<key>Types</key>
+					<array>
+						<string>com.apple.cocoa.string</string>
+					</array>
+				</dict>
+				<key>AMActionVersion</key>
+				<string>2.0.3</string>
+				<key>AMApplication</key>
+				<array>
+					<string>Automator</string>
+				</array>
+				<key>AMParameterProperties</key>
+				<dict>
+					<key>COMMAND_STRING</key>
+					<dict/>
+					<key>CheckedForUserDefaultShell</key>
+					<dict/>
+					<key>inputMethod</key>
+					<dict/>
+					<key>shell</key>
+					<dict/>
+					<key>source</key>
+					<dict/>
+				</dict>
+				<key>AMProvides</key>
+				<dict>
+					<key>Container</key>
+					<string>List</string>
+					<key>Types</key>
+					<array>
+						<string>com.apple.cocoa.string</string>
+					</array>
+				</dict>
+				<key>ActionBundlePath</key>
+				<string>/System/Library/Automator/Run Shell Script.action</string>
+				<key>ActionName</key>
+				<string>Run Shell Script</string>
+				<key>ActionParameters</key>
+				<dict>
+					<key>COMMAND_STRING</key>
+					<string>#!/bin/bash
+
+FOLDER_PATH="$1"
+HTML_FILE="$FOLDER_PATH/___.html"
+DEL_FILE="$FOLDER_PATH/del.txt"
+
+# Filtering only image files
+FILE_LIST=$(find "$FOLDER_PATH" -maxdepth 1 -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.bmp" -o -iname "*.gif" -o -iname "*.tiff" -o -iname "*.heif" \))
+
+# Counting total files and listed image files
+TOTAL_FILE_COUNT=$(ls "$FOLDER_PATH" | wc -l)
+IMAGE_FILE_COUNT=$(echo "$FILE_LIST" | wc -l)
+
+# Checking for the existence of the HTML file
+if [ -f "$HTML_FILE" ]; then
+  # Asking to delete selected files
+  RESPONSE=$(osascript -e 'tell app "System Events" to display dialog "Do you want to delete selected files?" buttons {"Yes", "No"} default button 2')
+  if [[ $RESPONSE == *"Yes"* ]]; then
+    # Checking for the existence of del.txt
+    if [ -f "$DEL_FILE" ]; then
+      # Preparing the list of files to be deleted
+      DEL_LIST=""
+      while IFS= read -r FILENAME || [[ -n "$FILENAME" ]]; do
+        FULL_PATH="$FOLDER_PATH/$FILENAME"
+        DEL_LIST+="$FULL_PATH\n"
+      done &lt; "$DEL_FILE"
+      
+      # Displaying the files to be deleted for debugging
+      # osascript -e "tell app \"System Events\" to display dialog \"Files to be deleted:\n$DEL_LIST\""
+
+      # Sending file list for deletion to the next Automator action
+      echo -e "$DEL_LIST"
+    else
+      # Displaying a message if del.txt does not exist
+      osascript -e 'tell app "System Events" to display dialog "del.txt file does not exist."'
+    fi
+  fi
+else
+  # Creating a simple HTML file with a list of images
+  echo "&lt;html&gt;&lt;head&gt;&lt;style&gt;.image { border: 2px solid white; margin: 2px; width: calc(33.33% - 4px); } .selected { border: 2px solid red; } #sliderContainer { position: fixed; top: 0; width: 100%; background-color: white; opacity: 0.3; transition: opacity 0.3s; z-index: 100; } #sliderContainer:hover { opacity: 1; } #selectedImages { width: 400px; height: 30px; white-space: pre; overflow: auto; margin-bottom: 5px; margin-top: 15px; } .imagesContainer { clear: both; }&lt;/style&gt;&lt;script&gt;var selectedImages = []; var keysPressed = {}; function updateImages() { var numberOfImages = document.getElementById('imageRange').value; var percentWidth = 100 / numberOfImages - 0.5; var images = document.getElementsByClassName('image'); for (var i = 0; i &lt; images.length; i++) { images[i].style.width = 'calc(' + percentWidth + '% - 4px)'; } document.getElementById('rangeValue').textContent = numberOfImages; } function updateSelectedImagesDisplay() { document.getElementById('selectedImages').value = selectedImages.join('\\n'); } function toggleSelection(image) { var imageName = image.getAttribute('src'); var index = selectedImages.indexOf(imageName); if (index &gt; -1) { selectedImages.splice(index, 1); image.classList.remove('selected'); } else { selectedImages.push(imageName); image.classList.add('selected'); } updateSelectedImagesDisplay(); } function selectAllImages() { var images = document.getElementsByClassName('image'); selectedImages = []; for (var i = 0; i &lt; images.length; i++) { var imageName = images[i].getAttribute('src'); selectedImages.push(imageName); images[i].classList.add('selected'); } updateSelectedImagesDisplay(); } function reverseSelections() { var images = document.getElementsByClassName('image'); selectedImages = []; for (var i = 0; i &lt; images.length; i++) { var imageName = images[i].getAttribute('src'); if (images[i].classList.contains('selected')) { images[i].classList.remove('selected'); } else { selectedImages.push(imageName); images[i].classList.add('selected'); } } updateSelectedImagesDisplay(); } function downloadSelectedImages() { var text = document.getElementById('selectedImages').value; var blob = new Blob([text], { type: 'text/plain' }); var a = document.createElement('a'); a.download = 'del.txt'; a.href = window.URL.createObjectURL(blob); a.style.display = 'none'; document.body.appendChild(a); a.click(); document.body.removeChild(a); } window.onload = function() { var sliderContainer = document.createElement('div'); sliderContainer.id = 'sliderContainer'; var slider = document.createElement('input'); slider.type = 'range'; slider.id = 'imageRange'; slider.min = '1'; slider.max = '20'; slider.value = '3'; slider.oninput = function() { updateImages(); this.blur(); }; var sliderValue = document.createElement('span'); sliderValue.id = 'rangeValue'; var selectedImagesDiv = document.createElement('textarea'); selectedImagesDiv.id = 'selectedImages'; selectedImagesDiv.readOnly = true; sliderContainer.appendChild(slider); sliderContainer.appendChild(sliderValue); document.body.insertBefore(sliderContainer, document.body.firstChild); document.body.insertBefore(selectedImagesDiv, sliderContainer.nextSibling); var images = document.getElementsByClassName('image'); for (var i = 0; i &lt; images.length; i++) { images[i].addEventListener('click', function() { toggleSelection(this); }); } function scrollToNextRow(direction) { var imagesPerRow = parseInt(document.getElementById('imageRange').value, 10); var firstImage = document.getElementsByClassName('image')[0]; var rowHeight = firstImage.offsetHeight + parseInt(window.getComputedStyle(firstImage).marginBottom, 10); var currentPosition = window.pageYOffset || document.documentElement.scrollTop; var newRowPosition = direction === 'down' ? currentPosition + rowHeight + 15 : currentPosition - rowHeight - 15; window.scrollTo(0, newRowPosition); } document.addEventListener('keydown', function(e) { keysPressed[e.key] = true; if (keysPressed['Control'] || keysPressed['Meta']) { if (keysPressed['a']) { selectAllImages(); e.preventDefault(); } } else if (keysPressed['r'] &amp;&amp; keysPressed['v']) { reverseSelections(); e.preventDefault(); } else if (keysPressed['d'] &amp;&amp; keysPressed['l']) { if (Object.keys(keysPressed).length === 2 &amp;&amp; keysPressed['d'] &amp;&amp; keysPressed['l']) { downloadSelectedImages(); e.preventDefault(); } } else if (e.key === 'PageDown') { scrollToNextRow('down'); e.preventDefault(); } else if (e.key === 'PageUp') { scrollToNextRow('up'); e.preventDefault(); } }); document.addEventListener('keyup', function(e) { delete keysPressed[e.key]; }); updateImages(); };&lt;/script&gt;&lt;/head&gt;&lt;body&gt;&lt;div class=\"imagesContainer\"&gt;" &gt; "$HTML_FILE"
+
+  # Filtering and addressing image files
+  find "$FOLDER_PATH" -maxdepth 1 -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.bmp" -o -iname "*.gif" -o -iname "*.tiff" -o -iname "*.heif" \) | while IFS= read -r IMAGE; do
+    # Extracting only the file name from the full path
+    FILENAME=$(basename "$IMAGE")
+    echo "&lt;img class=\"image\" src=\"$FILENAME\"&gt;" &gt;&gt; "$HTML_FILE"
+  done
+
+  echo "&lt;/div&gt;&lt;/body&gt;&lt;/html&gt;" &gt;&gt; "$HTML_FILE"
+  # Displaying a message after creating HTML file with images list
+  osascript -e "tell app \"System Events\" to display dialog \"Total files: $TOTAL_FILE_COUNT\nListed image files: $IMAGE_FILE_COUNT\n------\nHTML file created with images list.\""
+fi
+
+# Opening the HTML file
+open "$HTML_FILE"
+</string>
+					<key>CheckedForUserDefaultShell</key>
+					<true/>
+					<key>inputMethod</key>
+					<integer>1</integer>
+					<key>shell</key>
+					<string>/bin/bash</string>
+					<key>source</key>
+					<string></string>
+				</dict>
+				<key>BundleIdentifier</key>
+				<string>com.apple.RunShellScript</string>
+				<key>CFBundleVersion</key>
+				<string>2.0.3</string>
+				<key>CanShowSelectedItemsWhenRun</key>
+				<false/>
+				<key>CanShowWhenRun</key>
+				<true/>
+				<key>Category</key>
+				<array>
+					<string>AMCategoryUtilities</string>
+				</array>
+				<key>Class Name</key>
+				<string>RunShellScriptAction</string>
+				<key>InputUUID</key>
+				<string>76CE153E-65C2-4CC3-A392-C55D86B4C571</string>
+				<key>Keywords</key>
+				<array>
+					<string>Shell</string>
+					<string>Script</string>
+					<string>Command</string>
+					<string>Run</string>
+					<string>Unix</string>
+				</array>
+				<key>OutputUUID</key>
+				<string>FBD09938-BF68-4373-A4B6-94EF6583F053</string>
+				<key>ShowWhenRun</key>
+				<false/>
+				<key>UUID</key>
+				<string>3EEB0DEB-C1E4-47FA-8313-25BDCACE76D7</string>
+				<key>UnlocalizedApplications</key>
+				<array>
+					<string>Automator</string>
+				</array>
+				<key>arguments</key>
+				<dict>
+					<key>0</key>
+					<dict>
+						<key>default value</key>
+						<integer>0</integer>
+						<key>name</key>
+						<string>inputMethod</string>
+						<key>required</key>
+						<string>0</string>
+						<key>type</key>
+						<string>0</string>
+						<key>uuid</key>
+						<string>0</string>
+					</dict>
+					<key>1</key>
+					<dict>
+						<key>default value</key>
+						<false/>
+						<key>name</key>
+						<string>CheckedForUserDefaultShell</string>
+						<key>required</key>
+						<string>0</string>
+						<key>type</key>
+						<string>0</string>
+						<key>uuid</key>
+						<string>1</string>
+					</dict>
+					<key>2</key>
+					<dict>
+						<key>default value</key>
+						<string></string>
+						<key>name</key>
+						<string>source</string>
+						<key>required</key>
+						<string>0</string>
+						<key>type</key>
+						<string>0</string>
+						<key>uuid</key>
+						<string>2</string>
+					</dict>
+					<key>3</key>
+					<dict>
+						<key>default value</key>
+						<string></string>
+						<key>name</key>
+						<string>COMMAND_STRING</string>
+						<key>required</key>
+						<string>0</string>
+						<key>type</key>
+						<string>0</string>
+						<key>uuid</key>
+						<string>3</string>
+					</dict>
+					<key>4</key>
+					<dict>
+						<key>default value</key>
+						<string>/bin/sh</string>
+						<key>name</key>
+						<string>shell</string>
+						<key>required</key>
+						<string>0</string>
+						<key>type</key>
+						<string>0</string>
+						<key>uuid</key>
+						<string>4</string>
+					</dict>
+				</dict>
+				<key>isViewVisible</key>
+				<true/>
+				<key>location</key>
+				<string>309.000000:305.000000</string>
+				<key>nibPath</key>
+				<string>/System/Library/Automator/Run Shell Script.action/Contents/Resources/Base.lproj/main.nib</string>
+			</dict>
+			<key>isViewVisible</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>action</key>
+			<dict>
+				<key>AMAccepts</key>
+				<dict>
+					<key>Container</key>
+					<string>List</string>
+					<key>Optional</key>
+					<false/>
+					<key>Types</key>
+					<array>
+						<string>com.apple.cocoa.path</string>
+					</array>
+				</dict>
+				<key>AMActionVersion</key>
+				<string>1.1.2</string>
+				<key>AMApplication</key>
+				<array>
+					<string>Finder</string>
+				</array>
+				<key>AMParameterProperties</key>
+				<dict/>
+				<key>ActionBundlePath</key>
+				<string>/System/Library/Automator/Move Finder Items to Trash.action</string>
+				<key>ActionName</key>
+				<string>Move Finder Items to Trash</string>
+				<key>ActionParameters</key>
+				<dict/>
+				<key>BundleIdentifier</key>
+				<string>com.apple.Automator.MoveToTrash</string>
+				<key>CFBundleVersion</key>
+				<string>1.1.2</string>
+				<key>CanShowSelectedItemsWhenRun</key>
+				<true/>
+				<key>CanShowWhenRun</key>
+				<false/>
+				<key>Category</key>
+				<array>
+					<string>AMCategoryUtilities</string>
+					<string>AMCategoryFilesAndFolders</string>
+				</array>
+				<key>Class Name</key>
+				<string>MoveToTrashAction</string>
+				<key>InputUUID</key>
+				<string>3D00D7C7-5F2F-4147-BC89-07356C007B00</string>
+				<key>Keywords</key>
+				<array>
+					<string>File</string>
+					<string>Folder</string>
+					<string>Move</string>
+					<string>Trash</string>
+					<string>Delete</string>
+				</array>
+				<key>UUID</key>
+				<string>AED9DA6A-8AE3-4AD1-923A-265E2C3D6429</string>
+				<key>UnlocalizedApplications</key>
+				<array>
+					<string>Finder</string>
+				</array>
+				<key>arguments</key>
+				<dict/>
+			</dict>
+		</dict>
+	</array>
+	<key>connectors</key>
+	<dict>
+		<key>6385B1BE-0B2A-4050-B7AC-8F6099B4A7D6</key>
+		<dict>
+			<key>from</key>
+			<string>3EEB0DEB-C1E4-47FA-8313-25BDCACE76D7 - 3EEB0DEB-C1E4-47FA-8313-25BDCACE76D7</string>
+			<key>to</key>
+			<string>AED9DA6A-8AE3-4AD1-923A-265E2C3D6429 - AED9DA6A-8AE3-4AD1-923A-265E2C3D6429</string>
+		</dict>
+	</dict>
+	<key>workflowMetaData</key>
+	<dict>
+		<key>applicationBundleID</key>
+		<string>com.apple.finder</string>
+		<key>applicationBundleIDsByPath</key>
+		<dict>
+			<key>/System/Library/CoreServices/Finder.app</key>
+			<string>com.apple.finder</string>
+		</dict>
+		<key>applicationPath</key>
+		<string>/System/Library/CoreServices/Finder.app</string>
+		<key>applicationPaths</key>
+		<array>
+			<string>/System/Library/CoreServices/Finder.app</string>
+		</array>
+		<key>backgroundColor</key>
+		<data>
+		YnBsaXN0MDDUAQIDBAUGBwpYJHZlcnNpb25ZJGFyY2hpdmVyVCR0b3BYJG9i
+		amVjdHMSAAGGoF8QD05TS2V5ZWRBcmNoaXZlctEICVRyb290gAGpCwwXGBki
+		KCkwVSRudWxs1Q0ODxAREhMUFRZWJGNsYXNzW05TQ29sb3JOYW1lXE5TQ29s
+		b3JTcGFjZV1OU0NhdGFsb2dOYW1lV05TQ29sb3KACIADEAaAAoAEVlN5c3Rl
+		bV8QD3N5c3RlbVBpbmtDb2xvctUaGw8cDR0eHyASXE5TQ29tcG9uZW50c1VO
+		U1JHQl8QEk5TQ3VzdG9tQ29sb3JTcGFjZUcxIDAgMCAxTxAdMC45ODU5NDgz
+		MjQyIDAgMC4wMjY5NTA1Njc5NgAQAYAFgAjTIyQNJSYnVE5TSURVTlNJQ0MQ
+		B4AGgAdPEQxIAAAMSExpbm8CEAAAbW50clJHQiBYWVogB84AAgAJAAYAMQAA
+		YWNzcE1TRlQAAAAASUVDIHNSR0IAAAAAAAAAAAAAAAAAAPbWAAEAAAAA0y1I
+		UCAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+		AAAAAAARY3BydAAAAVAAAAAzZGVzYwAAAYQAAABsd3RwdAAAAfAAAAAUYmtw
+		dAAAAgQAAAAUclhZWgAAAhgAAAAUZ1hZWgAAAiwAAAAUYlhZWgAAAkAAAAAU
+		ZG1uZAAAAlQAAABwZG1kZAAAAsQAAACIdnVlZAAAA0wAAACGdmlldwAAA9QA
+		AAAkbHVtaQAAA/gAAAAUbWVhcwAABAwAAAAkdGVjaAAABDAAAAAMclRSQwAA
+		BDwAAAgMZ1RSQwAABDwAAAgMYlRSQwAABDwAAAgMdGV4dAAAAABDb3B5cmln
+		aHQgKGMpIDE5OTggSGV3bGV0dC1QYWNrYXJkIENvbXBhbnkAAGRlc2MAAAAA
+		AAAAEnNSR0IgSUVDNjE5NjYtMi4xAAAAAAAAAAAAAAASc1JHQiBJRUM2MTk2
+		Ni0yLjEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+		AAAAAAAAAAAAAFhZWiAAAAAAAADzUQABAAAAARbMWFlaIAAAAAAAAAAAAAAA
+		AAAAAABYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABja
+		WFlaIAAAAAAAACSgAAAPhAAAts9kZXNjAAAAAAAAABZJRUMgaHR0cDovL3d3
+		dy5pZWMuY2gAAAAAAAAAAAAAABZJRUMgaHR0cDovL3d3dy5pZWMuY2gAAAAA
+		AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAZGVz
+		YwAAAAAAAAAuSUVDIDYxOTY2LTIuMSBEZWZhdWx0IFJHQiBjb2xvdXIgc3Bh
+		Y2UgLSBzUkdCAAAAAAAAAAAAAAAuSUVDIDYxOTY2LTIuMSBEZWZhdWx0IFJH
+		QiBjb2xvdXIgc3BhY2UgLSBzUkdCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGRl
+		c2MAAAAAAAAALFJlZmVyZW5jZSBWaWV3aW5nIENvbmRpdGlvbiBpbiBJRUM2
+		MTk2Ni0yLjEAAAAAAAAAAAAAACxSZWZlcmVuY2UgVmlld2luZyBDb25kaXRp
+		b24gaW4gSUVDNjE5NjYtMi4xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB2
+		aWV3AAAAAAATpP4AFF8uABDPFAAD7cwABBMLAANcngAAAAFYWVogAAAAAABM
+		CVYAUAAAAFcf521lYXMAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAKPAAAA
+		AnNpZyAAAAAAQ1JUIGN1cnYAAAAAAAAEAAAAAAUACgAPABQAGQAeACMAKAAt
+		ADIANwA7AEAARQBKAE8AVABZAF4AYwBoAG0AcgB3AHwAgQCGAIsAkACVAJoA
+		nwCkAKkArgCyALcAvADBAMYAywDQANUA2wDgAOUA6wDwAPYA+wEBAQcBDQET
+		ARkBHwElASsBMgE4AT4BRQFMAVIBWQFgAWcBbgF1AXwBgwGLAZIBmgGhAakB
+		sQG5AcEByQHRAdkB4QHpAfIB+gIDAgwCFAIdAiYCLwI4AkECSwJUAl0CZwJx
+		AnoChAKOApgCogKsArYCwQLLAtUC4ALrAvUDAAMLAxYDIQMtAzgDQwNPA1oD
+		ZgNyA34DigOWA6IDrgO6A8cD0wPgA+wD+QQGBBMEIAQtBDsESARVBGMEcQR+
+		BIwEmgSoBLYExATTBOEE8AT+BQ0FHAUrBToFSQVYBWcFdwWGBZYFpgW1BcUF
+		1QXlBfYGBgYWBicGNwZIBlkGagZ7BowGnQavBsAG0QbjBvUHBwcZBysHPQdP
+		B2EHdAeGB5kHrAe/B9IH5Qf4CAsIHwgyCEYIWghuCIIIlgiqCL4I0gjnCPsJ
+		EAklCToJTwlkCXkJjwmkCboJzwnlCfsKEQonCj0KVApqCoEKmAquCsUK3Arz
+		CwsLIgs5C1ELaQuAC5gLsAvIC+EL+QwSDCoMQwxcDHUMjgynDMAM2QzzDQ0N
+		Jg1ADVoNdA2ODakNww3eDfgOEw4uDkkOZA5/DpsOtg7SDu4PCQ8lD0EPXg96
+		D5YPsw/PD+wQCRAmEEMQYRB+EJsQuRDXEPURExExEU8RbRGMEaoRyRHoEgcS
+		JhJFEmQShBKjEsMS4xMDEyMTQxNjE4MTpBPFE+UUBhQnFEkUahSLFK0UzhTw
+		FRIVNBVWFXgVmxW9FeAWAxYmFkkWbBaPFrIW1hb6Fx0XQRdlF4kXrhfSF/cY
+		GxhAGGUYihivGNUY+hkgGUUZaxmRGbcZ3RoEGioaURp3Gp4axRrsGxQbOxtj
+		G4obshvaHAIcKhxSHHscoxzMHPUdHh1HHXAdmR3DHeweFh5AHmoelB6+Hukf
+		Ex8+H2kflB+/H+ogFSBBIGwgmCDEIPAhHCFIIXUhoSHOIfsiJyJVIoIiryLd
+		IwojOCNmI5QjwiPwJB8kTSR8JKsk2iUJJTglaCWXJccl9yYnJlcmhya3Jugn
+		GCdJJ3onqyfcKA0oPyhxKKIo1CkGKTgpaymdKdAqAio1KmgqmyrPKwIrNitp
+		K50r0SwFLDksbiyiLNctDC1BLXYtqy3hLhYuTC6CLrcu7i8kL1ovkS/HL/4w
+		NTBsMKQw2zESMUoxgjG6MfIyKjJjMpsy1DMNM0YzfzO4M/E0KzRlNJ402DUT
+		NU01hzXCNf02NzZyNq426TckN2A3nDfXOBQ4UDiMOMg5BTlCOX85vDn5OjY6
+		dDqyOu87LTtrO6o76DwnPGU8pDzjPSI9YT2hPeA+ID5gPqA+4D8hP2E/oj/i
+		QCNAZECmQOdBKUFqQaxB7kIwQnJCtUL3QzpDfUPARANER0SKRM5FEkVVRZpF
+		3kYiRmdGq0bwRzVHe0fASAVIS0iRSNdJHUljSalJ8Eo3Sn1KxEsMS1NLmkvi
+		TCpMcky6TQJNSk2TTdxOJU5uTrdPAE9JT5NP3VAnUHFQu1EGUVBRm1HmUjFS
+		fFLHUxNTX1OqU/ZUQlSPVNtVKFV1VcJWD1ZcVqlW91dEV5JX4FgvWH1Yy1ka
+		WWlZuFoHWlZaplr1W0VblVvlXDVchlzWXSddeF3JXhpebF69Xw9fYV+zYAVg
+		V2CqYPxhT2GiYfViSWKcYvBjQ2OXY+tkQGSUZOllPWWSZedmPWaSZuhnPWeT
+		Z+loP2iWaOxpQ2maafFqSGqfavdrT2una/9sV2yvbQhtYG25bhJua27Ebx5v
+		eG/RcCtwhnDgcTpxlXHwcktypnMBc11zuHQUdHB0zHUodYV14XY+dpt2+HdW
+		d7N4EXhueMx5KnmJeed6RnqlewR7Y3vCfCF8gXzhfUF9oX4BfmJ+wn8jf4R/
+		5YBHgKiBCoFrgc2CMIKSgvSDV4O6hB2EgITjhUeFq4YOhnKG14c7h5+IBIhp
+		iM6JM4mZif6KZIrKizCLlov8jGOMyo0xjZiN/45mjs6PNo+ekAaQbpDWkT+R
+		qJIRknqS45NNk7aUIJSKlPSVX5XJljSWn5cKl3WX4JhMmLiZJJmQmfyaaJrV
+		m0Kbr5wcnImc951kndKeQJ6unx2fi5/6oGmg2KFHobaiJqKWowajdqPmpFak
+		x6U4pammGqaLpv2nbqfgqFKoxKk3qamqHKqPqwKrdavprFys0K1ErbiuLa6h
+		rxavi7AAsHWw6rFgsdayS7LCszizrrQltJy1E7WKtgG2ebbwt2i34LhZuNG5
+		SrnCuju6tbsuu6e8IbybvRW9j74KvoS+/796v/XAcMDswWfB48JfwtvDWMPU
+		xFHEzsVLxcjGRsbDx0HHv8g9yLzJOsm5yjjKt8s2y7bMNcy1zTXNtc42zrbP
+		N8+40DnQutE80b7SP9LB00TTxtRJ1MvVTtXR1lXW2Ndc1+DYZNjo2WzZ8dp2
+		2vvbgNwF3IrdEN2W3hzeot8p36/gNuC94UThzOJT4tvjY+Pr5HPk/OWE5g3m
+		lucf56noMui86Ubp0Opb6uXrcOv77IbtEe2c7ijutO9A78zwWPDl8XLx//KM
+		8xnzp/Q09ML1UPXe9m32+/eK+Bn4qPk4+cf6V/rn+3f8B/yY/Sn9uv5L/tz/
+		bf//0iorLC1aJGNsYXNzbmFtZVgkY2xhc3Nlc1xOU0NvbG9yU3BhY2WiLi9c
+		TlNDb2xvclNwYWNlWE5TT2JqZWN00iorMTJXTlNDb2xvcqIxLwAIABEAGgAk
+		ACkAMgA3AEkATABRAFMAXQBjAG4AdQCBAI4AnACkAKYAqACqAKwArgC1AMcA
+		0gDfAOUA+gECASIBJAEmASgBLwE0AToBPAE+AUANjA2RDZwNpQ2yDbUNwg3L
+		DdAN2AAAAAAAAAIBAAAAAAAAADMAAAAAAAAAAAAAAAAAAA3b
+		</data>
+		<key>backgroundColorName</key>
+		<string>systemPinkColor</string>
+		<key>inputTypeIdentifier</key>
+		<string>com.apple.Automator.fileSystemObject.folder</string>
+		<key>outputTypeIdentifier</key>
+		<string>com.apple.Automator.nothing</string>
+		<key>presentationMode</key>
+		<integer>15</integer>
+		<key>processesInput</key>
+		<integer>0</integer>
+		<key>serviceApplicationBundleID</key>
+		<string>com.apple.finder</string>
+		<key>serviceApplicationPath</key>
+		<string>/System/Library/CoreServices/Finder.app</string>
+		<key>serviceInputTypeIdentifier</key>
+		<string>com.apple.Automator.fileSystemObject.folder</string>
+		<key>serviceOutputTypeIdentifier</key>
+		<string>com.apple.Automator.nothing</string>
+		<key>serviceProcessesInput</key>
+		<integer>0</integer>
+		<key>systemImageName</key>
+		<string>NSTouchBarQuickLook</string>
+		<key>useAutomaticInputType</key>
+		<integer>0</integer>
+		<key>workflowTypeIdentifier</key>
+		<string>com.apple.Automator.servicesMenu</string>
+	</dict>
+</dict>
+</plist>

@@ -1,0 +1,14 @@
+1- install automator quick flow
+2- righ click on pics folder
+3- click choose & del to run
+4- on opened html see all pics
+	click for select pics for delete
+	pg down and up for better scroll
+	cmd + a = select all
+	r + v = invert selected pics
+	d + l = download all selected files name at del.txt
+5- move del.txt to pics folder
+6- run again script and choose delete files
+7- all selected delete!
+
+
