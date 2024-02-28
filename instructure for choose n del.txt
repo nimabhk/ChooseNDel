@@ -1,14 +1,17 @@
+v1.2
 1- install automator quick flow
-2- righ click on pics folder
-3- click choose & del to run
+2- right click on pics/videos folder
+3- click "choose & del" from quick actions to run
 4- on opened html see all pics
 	click for select pics for delete
-	pg down and up for better scroll
+	page down and up for better scroll
+	shift + click = preview media at actual size
 	cmd + a = select all
 	r + v = invert selected pics
 	d + l = download all selected files name at del.txt
-5- move del.txt to pics folder
-6- run again script and choose delete files
-7- all selected delete!
-
+	also can use buttons and mute videos
+5- after selection, download selected files (goes to default downloader destination)
+6- move "___del.txt" to pics folder
+7- run again "choose & del" on folder and accept to delete files
+8- all selected medias and txt file will delete!
 

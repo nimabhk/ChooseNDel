@@ -14,7 +14,7 @@
 			<key>NSMenuItem</key>
 			<dict>
 				<key>default</key>
-				<string>choose n del v1.2</string>
+				<string>choose n del v1.3</string>
 			</dict>
 			<key>NSMessage</key>
 			<string>runWorkflowAsService</string>

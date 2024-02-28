@@ -1,15 +1,52 @@
 <html><head><style>
+
+	body {
+		background-color: black;
+	}
+
 	.image {
 		border: 2px solid white;
 		margin: 2px;
-		width: calc(33.33% - 4px);
+		width: calc(33.33% - 5px);
+	}
+
+	.video-container {
+		margin: 2px;
+		width: calc(33.33% - 9px);
+		position: relative;
+	    display: inline-block;
+	}
+
+	.video {
+		border: 2px solid white;
+	    width: 100%;
+	    height: auto;
+	}
+
+	.play-icon {
+	    position: absolute;
+	    top: 50%;
+	    left: 50%;
+	    transform: translate(-50%, -50%);
+	    font-size: 2em;
+	    color: white;
+	    pointer-events: none;
+	    display: block;
+	}
+
+	.video-container:hover .play-icon {
+	    display: none;
+	}
+
+	#speakerIcon {
+		  cursor: pointer;
 	}
 
 	.selected {
 		border: 2px solid red;
 	}
 
-	#sliderContainer {
+	#fixedContainer {
 		position: fixed;
 		top: 0;
 		width: 100%;
@@ -17,10 +54,18 @@
 		opacity: 0.3;
 		transition: opacity 0.3s;
 		z-index: 100;
+		display: flex;
+	    align-items: center;
+	    justify-content: left;
+	    padding: 10px;
 	}
 
-	#sliderContainer:hover {
+	#fixedContainer:hover {
 		opacity: 1;
+	}
+
+	#fixedContainer * {
+	    margin-right: 10px;
 	}
 
 	#selectedImages {
@@ -33,42 +78,90 @@
 	}
 
 	.imagesContainer {
-		clear: both;
+		width: 80%;
+    	margin: auto;
 	}
-	</style>
-	<script>
+
+	#shortcutGuide {
+	    direction: rtl;
+	}
+
+	.modal {
+	  display: none;
+	  position: fixed;
+	  z-index: 1;
+	  left: 0;
+	  top: 0;
+	  width: 100%;
+	  height: 100%;
+	  overflow: auto;
+	  background-color: rgba(0,0,0,0.9);
+	}
+
+	.modal-content {
+	  margin: auto;
+	  display: block;
+	  width: auto; 
+	  max-width: 100%;
+	  padding-top: 3%;
+	}
+
+	#modalCaption {
+	    color: white;
+	    text-align: center;
+	    padding: 10px;
+	}
+
+
+</style><script>
+
 	var selectedImages = [];
 	var keysPressed = {};
 
+	// Change the background color of the body
+	function changeBackgroundColor(color) {
+	    document.body.style.backgroundColor = color;
+	}
+
+	// Update the width of the container that holds images and videos
+	function updateContainerWidth() {
+	    var containerWidth = document.getElementById('containerWidthRange').value;
+	    document.getElementsByClassName('imagesContainer')[0].style.width = containerWidth + '%';
+	}
+
+	// Update the display of images and videos based on the selected range
 	function updateImages() {
 		var numberOfImages = document.getElementById('imageRange').value;
 		var percentWidth = 100 / numberOfImages - 0.5;
-		var images = document.getElementsByClassName('image');
+		var images = document.querySelectorAll('.image, .video-container');
 		for(var i = 0; i < images.length; i++) {
 			images[i].style.width = 'calc(' + percentWidth + '% - 4px)';
 		}
 		document.getElementById('rangeValue').textContent = numberOfImages;
 	}
 
+	// Update the display of selected images and videos
 	function updateSelectedImagesDisplay() {
-		document.getElementById('selectedImages').value = selectedImages.join('\\n');
+		document.getElementById('selectedImages').value = selectedImages.join('\n');
 	}
 
-	function toggleSelection(image) {
-		var imageName = image.getAttribute('src');
+	// Toggle selection of an image or video
+	function toggleSelection(media) {
+		var imageName = media.getAttribute('src');
 		var index = selectedImages.indexOf(imageName);
 		if(index > -1) {
 			selectedImages.splice(index, 1);
-			image.classList.remove('selected');
+			media.classList.remove('selected');
 		} else {
 			selectedImages.push(imageName);
-			image.classList.add('selected');
+			media.classList.add('selected');
 		}
 		updateSelectedImagesDisplay();
 	}
 
+	// Select all images and videos
 	function selectAllImages() {
-		var images = document.getElementsByClassName('image');
+		var images = document.querySelectorAll('.image, .video');
 		selectedImages = [];
 		for(var i = 0; i < images.length; i++) {
 			var imageName = images[i].getAttribute('src');
@@ -78,8 +171,9 @@
 		updateSelectedImagesDisplay();
 	}
 
+	// Reverse the selection of images and videos
 	function reverseSelections() {
-		var images = document.getElementsByClassName('image');
+		var images = document.querySelectorAll('.image, .video');
 		selectedImages = [];
 		for(var i = 0; i < images.length; i++) {
 			var imageName = images[i].getAttribute('src');
@@ -93,48 +187,206 @@
 		updateSelectedImagesDisplay();
 	}
 
+	// Download selected images and videos as a text file
 	function downloadSelectedImages() {
 		var text = document.getElementById('selectedImages').value;
 		var blob = new Blob([text], {
 			type: 'text/plain'
 		});
 		var a = document.createElement('a');
-		a.download = 'del.txt';
+		a.download = '___del.txt';
 		a.href = window.URL.createObjectURL(blob);
 		a.style.display = 'none';
 		document.body.appendChild(a);
 		a.click();
 		document.body.removeChild(a);
 	}
+
+	// Initialize the page and set up event listeners
 	window.onload = function() {
+		// Create the main slider container
 		var sliderContainer = document.createElement('div');
-		sliderContainer.id = 'sliderContainer';
+		sliderContainer.id = 'fixedContainer';
+
+		// Create and configure the image range slider
 		var slider = document.createElement('input');
 		slider.type = 'range';
 		slider.id = 'imageRange';
 		slider.min = '1';
-		slider.max = '20';
-		slider.value = '3';
+		slider.max = '10';
+		slider.value = '4';
 		slider.oninput = function() {
 			updateImages();
 			this.blur();
 		};
+
+		// Create a span to display the range value
 		var sliderValue = document.createElement('span');
 		sliderValue.id = 'rangeValue';
+
+		// Create and configure the container width slider
+		var containerWidthSlider = document.createElement('input');
+	    containerWidthSlider.type = 'range';
+	    containerWidthSlider.id = 'containerWidthRange';
+	    containerWidthSlider.min = '30';
+	    containerWidthSlider.max = '100';
+	    containerWidthSlider.value = '80'; // Default value
+	    containerWidthSlider.oninput = updateContainerWidth;
+
+	    // Creating color squares for background change
+	    var blackSquare = document.createElement('div');
+	    blackSquare.style.width = '20px';
+	    blackSquare.style.height = '20px';
+	    blackSquare.style.backgroundColor = 'black';
+	    blackSquare.onclick = function() { changeBackgroundColor('black'); };
+	    var whiteSquare = document.createElement('div');
+	    whiteSquare.style.width = '20px';
+	    whiteSquare.style.height = '20px';
+	    whiteSquare.style.backgroundColor = 'white';
+	    whiteSquare.style.border = '1px solid black';
+	    whiteSquare.onclick = function() { changeBackgroundColor('white'); };
+
+	    // Create buttons for selection actions
+	    var revertButton = document.createElement('button');
+	    revertButton.textContent = 'Revert Selection';
+	    revertButton.onclick = reverseSelections;
+	    var selectAllButton = document.createElement('button');
+	    selectAllButton.textContent = 'Select All';
+	    selectAllButton.onclick = selectAllImages;
+	    var downloadButton = document.createElement('button');
+	    downloadButton.textContent = 'Download Selected Files';
+	    downloadButton.style.backgroundColor = 'red';
+	    downloadButton.onclick = downloadSelectedImages;
+
+		// Create a textarea for displaying selected images
 		var selectedImagesDiv = document.createElement('textarea');
 		selectedImagesDiv.id = 'selectedImages';
 		selectedImagesDiv.readOnly = true;
+
+
+		// Append elements to the fixed container
 		sliderContainer.appendChild(slider);
 		sliderContainer.appendChild(sliderValue);
 		document.body.insertBefore(sliderContainer, document.body.firstChild);
 		document.body.insertBefore(selectedImagesDiv, sliderContainer.nextSibling);
-		var images = document.getElementsByClassName('image');
-		for(var i = 0; i < images.length; i++) {
-			images[i].addEventListener('click', function() {
-				toggleSelection(this);
+	    //var sliderContainer = document.getElementById('fixedContainer');
+	    sliderContainer.appendChild(containerWidthSlider);
+	    sliderContainer.appendChild(blackSquare);
+	    sliderContainer.appendChild(whiteSquare);
+	    sliderContainer.appendChild(revertButton);
+	    sliderContainer.appendChild(selectAllButton);
+	    sliderContainer.appendChild(downloadButton);
+
+
+	    // Add click event listeners to images and videos to toggle selection
+		var medias = document.querySelectorAll('.image, .video');
+		for(var i = 0; i < medias.length; i++) {
+			medias[i].addEventListener('click', function(event) {
+				if (!event.shiftKey) {
+					toggleSelection(this);
+				}
 			});
 		}
 
+
+	    // Create a keyboard shortcut guide
+	    var shortcutGuide = document.createElement('div');
+	    shortcutGuide.id = 'shortcutGuide';
+	    shortcutGuide.textContent = 'Shortcuts: Press SHIFT+Click (Open Modal), R+V (Revert Selection), CMD+A (Select All), D+L (Download Selected)';
+	    document.body.insertBefore(shortcutGuide, document.body.firstChild);
+
+	    // Speaker icon for muting videos
+	    var fixedContainer = document.getElementById('fixedContainer');
+	    var speakerIcon = document.createElement('div');
+	    speakerIcon.id = 'speakerIcon';
+	    speakerIcon.textContent = '🔊';
+	    fixedContainer.appendChild(speakerIcon);
+
+	    var isMuted = false;
+
+	    speakerIcon.addEventListener('click', function() {
+	        isMuted = !isMuted;
+	        speakerIcon.textContent = isMuted ? '🔇' : '🔊';
+
+	        var videos = document.getElementsByTagName('video');
+	        for (var i = 0; i < videos.length; i++) {
+	            videos[i].muted = isMuted;
+	        }
+	    });
+
+	    // Setup modal for image and video preview
+	    var modal = document.getElementById('imageModal');
+	    var modalImage = document.getElementById('modalImage');
+	    var modalVideo = document.getElementById('modalVideo');
+		var modalCaption = document.getElementById('modalCaption');
+
+		// Add event listeners to images for modal
+		var images = document.getElementsByClassName('image');
+	    for (var i = 0; i < images.length; i++) {
+	        images[i].addEventListener('click', function(event) {
+	            if (event.shiftKey) {
+	                modal.style.display = "block";
+	                modalImage.src = this.src;
+	                modalImage.style.display = "block";
+	                modalVideo.style.display = "none";
+	                modalCaption.textContent = this.src.split('/').pop();
+	            }
+	        });
+	    }
+
+    	// Add event listeners to videos for modal and hover play/pause
+	    var videos = document.getElementsByClassName('video');
+	    for (var j = 0; j < videos.length; j++) {
+	        videos[j].addEventListener('mouseenter', function() {
+	            this.play();
+	        });
+	        videos[j].addEventListener('mouseleave', function() {
+	            this.pause();
+	        });
+
+	        videos[j].addEventListener('click', function(event) {
+	            if (event.shiftKey) {
+	                modal.style.display = "block";
+	                modalVideo.src = this.src;
+	                modalVideo.style.display = "block";
+	                modalImage.style.display = "none";
+	                modalCaption.textContent = this.src.split('/').pop();
+	            }
+	        });
+	    }
+
+	    // Close modal on click outside or Escape key
+		window.addEventListener('click', function(event) {
+	        if (event.target == modal || event.key === 'Escape') {
+	            modal.style.display = "none";
+	            if (!modalVideo.paused) {
+		            modalVideo.pause();
+		        }
+	        }
+	    });
+	    window.addEventListener('keydown', function(event) {
+		    if (event.key === 'Escape') {
+		        modal.style.display = "none";
+		        if (!modalVideo.paused) {
+		            modalVideo.pause();
+		        }
+		    }
+		});
+
+	    // Change cursor on hover over images or videos based on SHIFT key
+		document.addEventListener('mousemove', function(event) {
+		    if (event.shiftKey) {
+		        if (event.target.classList.contains('image') || event.target.classList.contains('video')) {
+		            event.target.style.cursor = 'pointer';
+		        }
+		    } else {
+		        if (event.target.classList.contains('image') || event.target.classList.contains('video')) {
+		            event.target.style.cursor = 'default';
+		        }
+		    }
+		});
+
+		// Keyboard navigation for image scrolling
 		function scrollToNextRow(direction) {
 			var imagesPerRow = parseInt(document.getElementById('imageRange').value, 10);
 			var firstImage = document.getElementsByClassName('image')[0];
@@ -143,6 +395,8 @@
 			var newRowPosition = direction === 'down' ? currentPosition + rowHeight + 15 : currentPosition - rowHeight - 15;
 			window.scrollTo(0, newRowPosition);
 		}
+
+		// Keyboard shortcuts for selection actions
 		document.addEventListener('keydown', function(e) {
 			keysPressed[e.key] = true;
 			if(keysPressed['Control'] || keysPressed['Meta']) {
@@ -169,86 +423,32 @@
 		document.addEventListener('keyup', function(e) {
 			delete keysPressed[e.key];
 		});
+		
+		// Initial update of image layout
 		updateImages();
+
+		// Delayed check for broken images
+		setTimeout(function() {
+	        var images = document.getElementsByClassName('image');
+	        for (var i = 0; i < images.length; i++) {
+	            if (!images[i].complete || images[i].naturalWidth === 0) {
+	                images[i].style.height = 'fit-content';
+	                images[i].style.position = 'relative';
+	                images[i].style.bottom = '4px';
+	            }
+	        }
+	    }, 2000);
+
 	};
-</script></head><body><div class="imagesContainer">
-<img class="image" src="adventurefervor_66693718_313298372782537_1041235776966201343_n.jpg">
-<img class="image" src="adventurefervor_66498828_1086253014904423_987718230708491616_n.jpg">
-<img class="image" src="adventurefervor_66066456_367555057268881_1877532820283681451_n.jpg">
-<img class="image" src="adventurefervor_66618293_513501106085400_5853571235457032808_n.jpg">
-<img class="image" src="adventurefervor_66390441_203412670651692_5437225634401363949_n.jpg">
-<img class="image" src="adventurefervor_66263025_2489251391132367_1560257995581140834_n.jpg">
-<img class="image" src="adventurefervor_66617133_150514489359806_604294037446571868_n.jpg">
-<img class="image" src="adventurefervor_66397985_158335215225637_5637536108490525848_n.jpg">
-<img class="image" src="adventurefervor_66176468_1147148915475180_6484053203170168730_n.jpg">
-<img class="image" src="adventurefervor_66422797_469288080560864_1956509705488223520_n.jpg">
-<img class="image" src="adventurefervor_66263893_1315057845314956_2039960322786648310_n.jpg">
-<img class="image" src="adventurefervor_66394464_1094191514108364_2465616408159527824_n.jpg">
-<img class="image" src="adventurefervor_66443513_860706847647968_250954107999371962_n.jpg">
-<img class="image" src="adventurefervor_66611218_741365349627354_8433116339635833745_n.jpg">
-<img class="image" src="adventurefervor_66470637_2413029085409674_6864975783354444406_n.jpg">
-<img class="image" src="adventurefervor_66623254_361974554480726_7879266993087880701_n.jpg">
-<img class="image" src="adventurefervor_66447637_523000218453305_7968393792209902597_n.jpg">
-<img class="image" src="adventurefervor_66419251_696275680874414_2189744817239275927_n.jpg">
-<img class="image" src="adventurefervor_65478618_490689598355508_4775325538002436495_n.jpg">
-<img class="image" src="adventurefervor_66099638_469852140238917_2193122184127842893_n.jpg">
-<img class="image" src="adventurefervor_66681804_2449109335319580_6683692441677462190_n.jpg">
-<img class="image" src="adventurefervor_66282448_499398324153849_5572964377253722647_n.jpg">
-<img class="image" src="adventurefervor_66678833_388433625195777_4567102280169459898_n.jpg">
-<img class="image" src="adventurefervor_66615906_130536608203392_8089658364096867306_n.jpg">
-<img class="image" src="adventurefervor_66281125_150405559443279_6575327404924362598_n.jpg">
-<img class="image" src="adventurefervor_66450361_510541816418668_780164852835375646_n.jpg">
-<img class="image" src="adventurefervor_66496996_119693876016864_1981421709613273056_n.jpg">
-<img class="image" src="adventurefervor_66401604_1327085284113455_3095242539664563946_n.jpg">
-<img class="image" src="adventurefervor_66715156_119941069331451_6809881286642218676_n.jpg">
-<img class="image" src="adventurefervor_66645302_381147882532459_6730825866419885398_n.jpg">
-<img class="image" src="adventurefervor_66298824_2155387101418613_8770258830933436422_n.jpg">
-<img class="image" src="adventurefervor_65517947_2213253325451847_886151633923590543_n.jpg">
-<img class="image" src="adventurefervor_65473331_2031735680265843_5444768397623001741_n.jpg">
-<img class="image" src="adventurefervor_66706093_513037116111087_5952646874528747928_n.jpg">
-<img class="image" src="adventurefervor_66608994_719585648480612_8619743186033679864_n.jpg">
-<img class="image" src="adventurefervor_66110405_159744428484886_1126578989781174913_n.jpg">
-<img class="image" src="adventurefervor_66669112_122021445763790_7548960194140330041_n.jpg">
-<img class="image" src="adventurefervor_66610990_392518074731846_4838536470162170250_n.jpg">
-<img class="image" src="adventurefervor_66437139_154136035736685_4455481424017772237_n.jpg">
-<img class="image" src="adventurefervor_66199978_2375348495883606_6697422910057514207_n.jpg">
-<img class="image" src="adventurefervor_66507514_145647053296638_7333299997744098314_n.jpg">
-<img class="image" src="adventurefervor_66318715_361371117863271_701877867856579373_n.jpg">
-<img class="image" src="adventurefervor_66294785_427435547980868_8914424767825364123_n.jpg">
-<img class="image" src="adventurefervor_66335208_150264672707269_1639979230041583654_n.jpg">
-<img class="image" src="adventurefervor_66339104_780403649029457_4114621547288117327_n.jpg">
-<img class="image" src="adventurefervor_66369749_204815137169715_7534441717362254225_n.jpg">
-<img class="image" src="adventurefervor_66454978_2300753686688203_5693335618641785869_n.jpg">
-<img class="image" src="adventurefervor_66618002_656968944794070_1635701861971810776_n.jpg">
-<img class="image" src="adventurefervor_66293630_487332732054347_1659684527574154714_n.jpg">
-<img class="image" src="adventurefervor_66213847_925807451115710_4094855993017514169_n.jpg">
-<img class="image" src="adventurefervor_66078958_2347274138860131_799075221826011421_n.jpg">
-<img class="image" src="adventurefervor_66685571_390367434894426_8869490763876270654_n.jpg">
-<img class="image" src="adventurefervor_66452118_2129481203830405_6075577382781362230_n.jpg">
-<img class="image" src="adventurefervor_66394781_155249922319530_1551389091223354138_n.jpg">
-<img class="image" src="adventurefervor_65393141_352227279044950_4176235174740154520_n.jpg">
-<img class="image" src="adventurefervor_66642429_152982075770927_4571826192637834010_n.jpg">
-<img class="image" src="adventurefervor_66653542_524596608307610_8221747921843786471_n.jpg">
-<img class="image" src="adventurefervor_66099998_664054294111127_7611002141474931781_n.jpg">
-<img class="image" src="adventurefervor_66255393_507188726721816_6528772357789082764_n.jpg">
-<img class="image" src="adventurefervor_66131584_129972461594899_2066063177587043603_n.jpg">
-<img class="image" src="adventurefervor_66280821_155839288866688_3711684390591521044_n.jpg">
-<img class="image" src="adventurefervor_66426024_684562032046473_9057118233976954578_n.jpg">
-<img class="image" src="adventurefervor_66295269_879375592432155_2416833981886520437_n.jpg">
-<img class="image" src="adventurefervor_66137904_370815383607044_778939103613296917_n.jpg">
-<img class="image" src="adventurefervor_66647946_2165604603565724_6870128610408423976_n.jpg">
-<img class="image" src="adventurefervor_66663779_2100658743368210_8150633006752992222_n.jpg">
-<img class="image" src="adventurefervor_66602588_161613441684554_273224378481113335_n.jpg">
-<img class="image" src="adventurefervor_66650827_355539458702672_614851326385932961_n.jpg">
-<img class="image" src="adventurefervor_66652709_218296252437886_2892718958717325757_n.jpg">
-<img class="image" src="adventurefervor_66669409_515155972359839_7475330938612766602_n.jpg">
-<img class="image" src="adventurefervor_66219294_2072720176356197_3888200913099137306_n.jpg">
-<img class="image" src="adventurefervor_65802548_2210197815696401_6875799848836027823_n.jpg">
-<img class="image" src="adventurefervor_66070923_532409617501588_8595970536564324207_n.jpg">
-<img class="image" src="adventurefervor_66425350_379727912685602_3986420363006363436_n.jpg">
-<img class="image" src="adventurefervor_66675461_117493655974392_7568172095365992444_n.jpg">
-<img class="image" src="adventurefervor_66229982_131951484720001_7126275985594085754_n.jpg">
-<img class="image" src="adventurefervor_66679803_454297951828489_4861287739230460007_n.jpg">
-<img class="image" src="adventurefervor_66296877_386126418759416_3727266154775024096_n.jpg">
-<img class="image" src="adventurefervor_65795701_391305134855556_6587150364948009357_n.jpg">
-</div></body></html>
+
+</script></head>
+<body>
+	<div class="imagesContainer">
+		<img class="image" src="1.jpg">
+		<img class="image" src="2.jpg">
+		<div class="video-container">
+			<video class="video" src="3.mp4"></video>
+			<div class="play-icon">&#9658;</div>
+		</div>
+	</div>
+</body></html>
