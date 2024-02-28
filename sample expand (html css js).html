@@ -68,6 +68,12 @@
 	    margin-right: 10px;
 	}
 
+	#countDisplay {
+		margin: auto;
+		margin-right: 1em;
+		padding-right: 1em;
+	}
+
 	#selectedImages {
 		width: 400px;
 		height: 30px;
@@ -103,6 +109,7 @@
 	  display: block;
 	  width: auto; 
 	  max-width: 100%;
+	  max-height: 92%;
 	  padding-top: 3%;
 	}
 
@@ -129,8 +136,12 @@
 	    document.getElementsByClassName('imagesContainer')[0].style.width = containerWidth + '%';
 	}
 
-	// Update the display of images and videos based on the selected range
+	// Update the display of images and videos based on the selected range and scroll to correct position of page
 	function updateImages() {
+		var scrollPositionY = window.scrollY || window.pageYOffset;
+	    var totalHeightBefore = document.documentElement.scrollHeight;
+	    var relativePosition = scrollPositionY / totalHeightBefore;
+
 		var numberOfImages = document.getElementById('imageRange').value;
 		var percentWidth = 100 / numberOfImages - 0.5;
 		var images = document.querySelectorAll('.image, .video-container');
@@ -138,11 +149,18 @@
 			images[i].style.width = 'calc(' + percentWidth + '% - 4px)';
 		}
 		document.getElementById('rangeValue').textContent = numberOfImages;
+
+		setTimeout(function() {
+	        var totalHeightAfter = document.documentElement.scrollHeight;
+	        var newScrollPositionY = relativePosition * totalHeightAfter;
+	        window.scrollTo(0, newScrollPositionY);
+	    }, 100);
 	}
 
 	// Update the display of selected images and videos
 	function updateSelectedImagesDisplay() {
 		document.getElementById('selectedImages').value = selectedImages.join('\n');
+		document.getElementById('selectedCount').textContent = selectedImages.length;
 	}
 
 	// Toggle selection of an image or video
@@ -205,8 +223,8 @@
 	// Initialize the page and set up event listeners
 	window.onload = function() {
 		// Create the main slider container
-		var sliderContainer = document.createElement('div');
-		sliderContainer.id = 'fixedContainer';
+		var fixedContainer = document.createElement('div');
+		fixedContainer.id = 'fixedContainer';
 
 		// Create and configure the image range slider
 		var slider = document.createElement('input');
@@ -265,17 +283,45 @@
 
 
 		// Append elements to the fixed container
-		sliderContainer.appendChild(slider);
-		sliderContainer.appendChild(sliderValue);
-		document.body.insertBefore(sliderContainer, document.body.firstChild);
-		document.body.insertBefore(selectedImagesDiv, sliderContainer.nextSibling);
-	    //var sliderContainer = document.getElementById('fixedContainer');
-	    sliderContainer.appendChild(containerWidthSlider);
-	    sliderContainer.appendChild(blackSquare);
-	    sliderContainer.appendChild(whiteSquare);
-	    sliderContainer.appendChild(revertButton);
-	    sliderContainer.appendChild(selectAllButton);
-	    sliderContainer.appendChild(downloadButton);
+		fixedContainer.appendChild(slider);
+		fixedContainer.appendChild(sliderValue);
+		document.body.insertBefore(fixedContainer, document.body.firstChild);
+		document.body.insertBefore(selectedImagesDiv, fixedContainer.nextSibling);
+	    fixedContainer.appendChild(containerWidthSlider);
+	    fixedContainer.appendChild(blackSquare);
+	    fixedContainer.appendChild(whiteSquare);
+	    fixedContainer.appendChild(revertButton);
+	    fixedContainer.appendChild(selectAllButton);
+	    fixedContainer.appendChild(downloadButton);
+
+
+	    // Speaker icon for muting videos
+	    var speakerIcon = document.createElement('div');
+	    speakerIcon.id = 'speakerIcon';
+	    speakerIcon.textContent = '🔊';
+	    fixedContainer.appendChild(speakerIcon);
+
+	    var isMuted = false;
+
+	    speakerIcon.addEventListener('click', function() {
+	        isMuted = !isMuted;
+	        speakerIcon.textContent = isMuted ? '🔇' : '🔊';
+
+	        var videos = document.getElementsByTagName('video');
+	        for (var i = 0; i < videos.length; i++) {
+	            videos[i].muted = isMuted;
+	        }
+	    });
+
+	    // Counting total and selected medias
+	    var countDisplay = document.createElement('div');
+		countDisplay.id = 'countDisplay';
+		countDisplay.textContent = 'Total: ' + document.querySelectorAll('.image, .video').length + ' / Selected: ';
+		var selectedCount = document.createElement('span');
+		selectedCount.id = 'selectedCount';
+		selectedCount.textContent = '0';
+		countDisplay.appendChild(selectedCount);
+		fixedContainer.appendChild(countDisplay);
 
 
 	    // Add click event listeners to images and videos to toggle selection
@@ -295,24 +341,7 @@
 	    shortcutGuide.textContent = 'Shortcuts: Press SHIFT+Click (Open Modal), R+V (Revert Selection), CMD+A (Select All), D+L (Download Selected)';
 	    document.body.insertBefore(shortcutGuide, document.body.firstChild);
 
-	    // Speaker icon for muting videos
-	    var fixedContainer = document.getElementById('fixedContainer');
-	    var speakerIcon = document.createElement('div');
-	    speakerIcon.id = 'speakerIcon';
-	    speakerIcon.textContent = '🔊';
-	    fixedContainer.appendChild(speakerIcon);
-
-	    var isMuted = false;
-
-	    speakerIcon.addEventListener('click', function() {
-	        isMuted = !isMuted;
-	        speakerIcon.textContent = isMuted ? '🔇' : '🔊';
-
-	        var videos = document.getElementsByTagName('video');
-	        for (var i = 0; i < videos.length; i++) {
-	            videos[i].muted = isMuted;
-	        }
-	    });
+	   
 
 	    // Setup modal for image and video preview
 	    var modal = document.getElementById('imageModal');
@@ -325,14 +354,39 @@
 	    for (var i = 0; i < images.length; i++) {
 	        images[i].addEventListener('click', function(event) {
 	            if (event.shiftKey) {
+	            	var imageName = decodeURIComponent(new URL(this.src).pathname.split('/').pop());
 	                modal.style.display = "block";
-	                modalImage.src = this.src;
+	                document.body.style.overflow = 'hidden';
+	                modalImage.src = imageName;
 	                modalImage.style.display = "block";
 	                modalVideo.style.display = "none";
-	                modalCaption.textContent = this.src.split('/').pop();
+	                modalCaption.textContent = imageName;
+
+
+	                if (selectedImages.includes(imageName)) {
+			            modalImage.classList.add('selected');
+			        } else {
+			            modalImage.classList.remove('selected');
+			        }
+	                
 	            }
 	        });
 	    }
+
+	    modalImage.addEventListener('click', function() {
+	    	var imageName = decodeURIComponent(new URL(this.src).pathname.split('/').pop());
+		    var correspondingImage = document.querySelector('img[src="' + imageName + '"]');
+		    //alert(this.src.split('/').pop());
+		    //alert(correspondingImage);
+		    toggleSelection(correspondingImage);
+
+		    if (selectedImages.includes(imageName)) {
+		        this.classList.add('selected');
+		    } else {
+		        this.classList.remove('selected');
+		    }
+		});
+
 
     	// Add event listeners to videos for modal and hover play/pause
 	    var videos = document.getElementsByClassName('video');
@@ -345,20 +399,42 @@
 	        });
 
 	        videos[j].addEventListener('click', function(event) {
-	            if (event.shiftKey) {
-	                modal.style.display = "block";
-	                modalVideo.src = this.src;
-	                modalVideo.style.display = "block";
-	                modalImage.style.display = "none";
-	                modalCaption.textContent = this.src.split('/').pop();
-	            }
-	        });
-	    }
+		        if (event.shiftKey) {
+		            var videoName = decodeURIComponent(new URL(this.src).pathname.split('/').pop());
+		            modal.style.display = "block";
+		            document.body.style.overflow = 'hidden';
+		            modalVideo.src = videoName;
+		            modalVideo.style.display = "block";
+		            modalImage.style.display = "none";
+		            modalCaption.textContent = videoName;
+
+		            if (selectedImages.includes(videoName)) {
+		                modalVideo.classList.add('selected');
+		            } else {
+		                modalVideo.classList.remove('selected');
+		            }
+		        }
+		    });
+		}
+
+		modalVideo.addEventListener('click', function() {
+		    var videoName = decodeURIComponent(new URL(this.src).pathname.split('/').pop());
+		    var correspondingVideo = document.querySelector('video[src="' + videoName + '"]');
+		    toggleSelection(correspondingVideo);
+
+		    if (selectedImages.includes(videoName)) {
+		        this.classList.add('selected');
+		    } else {
+		        this.classList.remove('selected');
+		    }
+		});
+
 
 	    // Close modal on click outside or Escape key
 		window.addEventListener('click', function(event) {
 	        if (event.target == modal || event.key === 'Escape') {
 	            modal.style.display = "none";
+	            document.body.style.overflow = '';
 	            if (!modalVideo.paused) {
 		            modalVideo.pause();
 		        }
@@ -367,6 +443,7 @@
 	    window.addEventListener('keydown', function(event) {
 		    if (event.key === 'Escape') {
 		        modal.style.display = "none";
+		        document.body.style.overflow = '';
 		        if (!modalVideo.paused) {
 		            modalVideo.pause();
 		        }
@@ -385,6 +462,25 @@
 		        }
 		    }
 		});
+
+		document.addEventListener('mousemove', function(event) {
+		    if (event.ctrlKey) {
+		        var target = event.target;
+		        if ((target.classList.contains('image') || target.classList.contains('video')) && target !== lastHoveredMedia) {
+		            toggleSelection(target);
+		            lastHoveredMedia = target;
+		        }
+		    }
+		});
+
+
+		var medias = document.querySelectorAll('.image, .video');
+		medias.forEach(function(media) {
+		    media.addEventListener('mouseleave', function() {
+		        lastHoveredMedia = null;
+		    });
+		});
+
 
 		// Keyboard navigation for image scrolling
 		function scrollToNextRow(direction) {
@@ -412,10 +508,10 @@
 					downloadSelectedImages();
 					e.preventDefault();
 				}
-			} else if(e.key === 'PageDown') {
+			} else if(e.key === 'PageDown' || e.key === 'z' || e.key === 'Z') {
 				scrollToNextRow('down');
 				e.preventDefault();
-			} else if(e.key === 'PageUp') {
+			} else if(e.key === 'PageUp' || e.key === 'a' || e.key === 'A') {
 				scrollToNextRow('up');
 				e.preventDefault();
 			}
@@ -423,6 +519,66 @@
 		document.addEventListener('keyup', function(e) {
 			delete keysPressed[e.key];
 		});
+
+
+
+		// do next or prev in modal mode
+		function getNextOrPreviousMedia(currentIndex, direction) {
+		    var medias = document.querySelectorAll('.image, .video');
+
+		    var newIndex;
+		    if (direction === 'next') {
+		        newIndex = currentIndex + 1;
+		        if (newIndex >= medias.length) newIndex = 0;
+		    } else {
+		        newIndex = currentIndex - 1;
+		        if (newIndex < 0) return currentIndex;
+		    }
+
+		    return medias[newIndex];
+		}
+
+		document.addEventListener('keydown', function(event) {
+		    if (modal.style.display === 'block') {
+		        if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+		            var currentMedia = modalImage.style.display === 'block' ? modalImage : modalVideo;
+
+		            if (currentMedia === modalVideo && !modalVideo.paused) {
+		                modalVideo.pause();
+		            }
+
+		            var currentFileName = decodeURIComponent(new URL(currentMedia.src).pathname.split('/').pop());
+		            var currentIndex = Array.from(document.querySelectorAll('.image, .video')).indexOf(document.querySelector('[src$="' + currentFileName + '"]'));
+
+		            var nextMedia = getNextOrPreviousMedia(currentIndex, event.key === 'ArrowRight' ? 'next' : 'previous');
+		            if (!nextMedia) return;
+
+		            var nextMediaFileName = decodeURIComponent(new URL(nextMedia.src).pathname.split('/').pop());
+
+		            if (nextMedia.classList.contains('image')) {
+		                modalImage.src = nextMediaFileName;
+		                modalImage.style.display = "block";
+		                modalVideo.style.display = "none";
+		            } else if (nextMedia.classList.contains('video')) {
+		                modalVideo.src = nextMediaFileName;
+		                modalVideo.style.display = "block";
+		                modalImage.style.display = "none";
+		            }
+		            modalCaption.textContent = nextMediaFileName;
+
+		            // Update selection status
+		            if (selectedImages.includes(nextMediaFileName)) {
+		                modalImage.classList.add('selected');
+		                modalVideo.classList.add('selected');
+		            } else {
+		                modalImage.classList.remove('selected');
+		                modalVideo.classList.remove('selected');
+		            }
+		        }
+		    }
+		});
+
+
 		
 		// Initial update of image layout
 		updateImages();
